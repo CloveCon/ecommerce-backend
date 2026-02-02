@@ -1,0 +1,51 @@
+import {
+  createOrder as createOrderService,
+  getOrders,
+  updateOrderStatus as updateOrderStatusService,
+} from "../services/orders.services.js";
+
+export const fetchOrders = async (req, res) => {
+  try {
+    const data = await getOrders();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export const createOrder = async (req, res) => {
+  try {
+    const order = await createOrderService(req.body);
+    res.json({
+      message: "Order created successfully",
+      order,
+    });
+  } catch (err) {
+    if (err.message === "Order items required" || err.message === "User ID required") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    console.error("ORDER CREATE ERROR:", err);
+    res.status(500).json({ error: "Failed to create order" });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const order = await updateOrderStatusService(req.params.id, req.body.status);
+    res.json({
+      message: "Order status updated",
+      order,
+    });
+  } catch (err) {
+    if (err.message === "Invalid order status") {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Order not found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    res.status(500).json({ error: err.message });
+  }
+};
