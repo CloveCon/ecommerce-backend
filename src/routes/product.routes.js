@@ -1,7 +1,14 @@
 import express from "express";
 import supabase from "../config/supabase.js";
+import { searchProducts, getSuggestions } from "../controllers/products.controller.js";
 
 const router = express.Router();
+
+// SEARCH products
+router.get("/search", searchProducts);
+
+// GET suggestions/trending products
+router.get("/suggestions", getSuggestions);
 
 // GET all products
 router.get("/", async (req, res) => {

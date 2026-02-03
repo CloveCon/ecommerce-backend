@@ -4,6 +4,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImage,
 } from "../services/products.services.js";
 
 export const fetchProducts = async (req, res) => {
@@ -34,7 +35,21 @@ export const addProduct = async (req, res) => {
       });
     }
 
-    const product = await createProduct(req.body);
+    let productData = { ...req.body };
+
+    // Handle image upload if file is provided
+    if (req.file) {
+      try {
+        const imageUrl = await uploadProductImage(req.file);
+        productData.image_url = imageUrl;
+      } catch (err) {
+        return res.status(400).json({
+          error: "Failed to upload image: " + err.message,
+        });
+      }
+    }
+
+    const product = await createProduct(productData);
     res.status(201).json({
       message: "Product added successfully",
       product,

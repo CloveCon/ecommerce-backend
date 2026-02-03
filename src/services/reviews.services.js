@@ -58,3 +58,39 @@ export const createReview = async ({ user_id, order_item_id, rating, comment }) 
 
   return data[0];
 };
+
+/**
+ * GET REVIEWS BY PRODUCT ID (Public)
+ */
+export const getReviewsByProductId = async (productId) => {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(`
+      id,
+      rating,
+      comment,
+      created_at,
+      users (
+        name
+      ),
+      order_items!inner (
+        product_id,
+        product_name
+      )
+    `)
+    .eq("order_items.product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((r) => ({
+    id: r.id,
+    customer: r.users?.name || "Guest",
+    rating: r.rating,
+    review: r.comment,
+    date: r.created_at,
+    product_id: r.order_items?.product_id,
+    product: r.order_items?.product_name || "Unknown",
+  }));
+};
+

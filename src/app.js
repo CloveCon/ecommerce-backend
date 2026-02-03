@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import orderRoutes from "./routes/order.routes.js";
@@ -12,11 +13,34 @@ import adminDashboardRoutes from "./routes/admin.dashboard.routes.js";
 import adminCustomerRoutes from "./routes/admin.customer.routes.js";
 import adminReportsRoutes from "./routes/admin.reports.routes.js";
 import adminReviewsRoutes from "./routes/admin.reviews.routes.js";
+import reviewsRoutes from "./routes/reviews.routes.js";
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// Multer configuration for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only images are allowed."));
+    }
+  },
+});
+
+app.use((req, res, next) => {
+  req.upload = upload;
+  next();
+});
 
 app.get("/", (req, res) => {
   res.send("Backend is running");
@@ -36,6 +60,7 @@ app.use("/api/admin/dashboard", adminDashboardRoutes);
 app.use("/api/admin/customers", adminCustomerRoutes);
 app.use("/api/admin/reports", adminReportsRoutes);
 app.use("/api/admin/reviews", adminReviewsRoutes);
+app.use("/api/reviews", reviewsRoutes);
 
 export default app;
 

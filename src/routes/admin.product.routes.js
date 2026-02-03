@@ -17,8 +17,10 @@ router.get("/", fetchProducts);
 // Product stats (total / low / out of stock)
 router.get("/stats", fetchProductStats);
 
-// Add new product
-router.post("/", adminAuth, addProduct);
+// Add new product with image upload
+router.post("/", adminAuth, (req, res, next) => {
+  req.upload.single("image")(req, res, next);
+}, addProduct);
 
 // Update product
 router.put("/:id", adminAuth, editProduct);
