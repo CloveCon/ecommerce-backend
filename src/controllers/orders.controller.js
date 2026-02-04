@@ -25,6 +25,11 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
+    // Handle insufficient stock errors
+    if (err.message.includes("Insufficient stock") || err.message.includes("not found")) {
+      return res.status(400).json({ error: err.message });
+    }
+
     console.error("ORDER CREATE ERROR:", err);
     res.status(500).json({ error: "Failed to create order" });
   }

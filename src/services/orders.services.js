@@ -12,6 +12,27 @@ export const createOrder = async ({ items, user_id }) => {
     throw new Error("User ID required");
   }
 
+  // Validate stock availability BEFORE creating order
+  for (const item of items) {
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("stock, name")
+      .eq("id", item.product_id)
+      .single();
+
+    if (productError) throw productError;
+
+    if (!product) {
+      throw new Error(`Product with ID ${item.product_id} not found`);
+    }
+
+    if (product.stock < item.quantity) {
+      throw new Error(
+        `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
+      );
+    }
+  }
+
   const total = items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -45,21 +66,23 @@ export const createOrder = async ({ items, user_id }) => {
 
   if (orderItemsError) throw orderItemsError;
 
-    // Decrement product stock for each item
+  // Decrement product stock for each item (stock already validated)
   for (const item of items) {
     const { data: product, error: productError } = await supabase
       .from("products")
       .select("stock")
       .eq("id", item.product_id)
       .single();
+
     if (productError) throw productError;
-    const newStock = (product?.stock ?? 0) - item.quantity;
-    // Prevent negative stock
-    const updatedStock = newStock < 0 ? 0 : newStock;
+
+    const newStock = product.stock - item.quantity;
+
     const { error: updateError } = await supabase
       .from("products")
-      .update({ stock: updatedStock })
+      .update({ stock: newStock })
       .eq("id", item.product_id);
+
     if (updateError) throw updateError;
   }
 
