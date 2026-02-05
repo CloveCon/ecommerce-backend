@@ -115,6 +115,33 @@ export const getOrders = async () => {
 };
 
 /**
+ * GET ORDERS BY USER ID (profile)
+ */
+export const getOrdersByUserId = async (userId) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      total_amount,
+      order_status,
+      payment_status,
+      created_at,
+      order_items (
+        product_id,
+        product_name,
+        quantity,
+        price
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data || [];
+};
+
+/**
  * UPDATE ORDER STATUS
  */
 export const updateOrderStatus = async (id, status) => {

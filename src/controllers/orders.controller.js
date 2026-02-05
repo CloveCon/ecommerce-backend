@@ -1,6 +1,7 @@
 import {
   createOrder as createOrderService,
   getOrders,
+  getOrdersByUserId,
   updateOrderStatus as updateOrderStatusService,
 } from "../services/orders.services.js";
 
@@ -10,6 +11,21 @@ export const fetchOrders = async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+export const fetchMyOrders = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const data = await getOrdersByUserId(userId);
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to fetch orders" });
   }
 };
 

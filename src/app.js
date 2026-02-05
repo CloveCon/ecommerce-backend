@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
@@ -14,10 +15,18 @@ import adminCustomerRoutes from "./routes/admin.customer.routes.js";
 import adminReportsRoutes from "./routes/admin.reports.routes.js";
 import adminReviewsRoutes from "./routes/admin.reviews.routes.js";
 import reviewsRoutes from "./routes/reviews.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import addressRoutes from "./routes/address.routes.js";
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || true,
+    credentials: true,
+  })
+);
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
@@ -61,6 +70,8 @@ app.use("/api/admin/customers", adminCustomerRoutes);
 app.use("/api/admin/reports", adminReportsRoutes);
 app.use("/api/admin/reviews", adminReviewsRoutes);
 app.use("/api/reviews", reviewsRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/addresses", addressRoutes);
 
 export default app;
 
