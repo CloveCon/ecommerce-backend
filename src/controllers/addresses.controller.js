@@ -75,6 +75,8 @@ export const editAddress = async (req, res) => {
       "state",
       "postal_code",
       "country",
+      "latitude",
+      "longitude",
       "is_default",
     ];
 

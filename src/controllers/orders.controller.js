@@ -2,6 +2,8 @@ import {
   createOrder as createOrderService,
   getOrders,
   getOrdersByUserId,
+  getOrderEta as getOrderEtaService,
+  getOrdersEtaList as getOrdersEtaListService,
   updateOrderStatus as updateOrderStatusService,
 } from "../services/orders.services.js";
 
@@ -37,7 +39,11 @@ export const createOrder = async (req, res) => {
       order,
     });
   } catch (err) {
-    if (err.message === "Order items required" || err.message === "User ID required") {
+    if (
+      err.message === "Order items required" ||
+      err.message === "User ID required" ||
+      err.message === "Address ID required"
+    ) {
       return res.status(400).json({ error: err.message });
     }
 
@@ -68,5 +74,56 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     res.status(500).json({ error: err.message });
+  }
+};
+
+export const fetchOrderEta = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const result = await getOrderEtaService({
+      orderId: req.params.id,
+      requesterUserId: userId,
+    });
+
+    return res.json(result);
+  } catch (err) {
+    if (err.message === "Order not found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    if (err.message === "Forbidden") {
+      return res.status(403).json({ error: err.message });
+    }
+
+    if (
+      err.message === "Order not dispatched" ||
+      err.message === "Order address missing" ||
+      err.message === "Order address not found" ||
+      err.message === "Order address coordinates missing"
+    ) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    return res.status(500).json({ error: "Failed to fetch ETA" });
+  }
+};
+
+export const fetchMyOrdersEtaList = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const data = await getOrdersEtaListService({ userId });
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to fetch ETA list" });
   }
 };

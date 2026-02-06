@@ -1,15 +1,140 @@
-import supabase from "../config/supabase.js";
+import supabase, { supabaseAdmin } from "../config/supabase.js";
+
+const parseCoordinate = (value, label) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} missing or invalid`);
+  }
+  return parsed;
+};
+
+const getOpenRouteServiceApiKey = () => {
+  const apiKey = process.env.OPENROUTESERVICE_API_KEY;
+  if (!apiKey) {
+    throw new Error("OpenRouteService API key missing");
+  }
+
+  return apiKey;
+};
+
+const getRestaurantLocation = () => {
+  const latitude = parseCoordinate(process.env.RESTAURANT_LATITUDE, "Restaurant latitude");
+  const longitude = parseCoordinate(process.env.RESTAURANT_LONGITUDE, "Restaurant longitude");
+
+  return { latitude, longitude };
+};
+
+const chunkArray = (items, size) => {
+  const result = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
+};
+
+const getOrderDeliveryCoordinates = async ({ userId, addressId }) => {
+  if (!addressId) {
+    throw new Error("Order address missing");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("user_addresses")
+    .select("latitude, longitude")
+    .eq("id", addressId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error("Order address not found");
+  }
+
+  const { latitude, longitude } = data;
+
+  if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
+    throw new Error("Order address coordinates missing");
+  }
+
+  return {
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+  };
+};
+
+const getAddressCoordinatesByIds = async (addressIds) => {
+  if (!addressIds || addressIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("user_addresses")
+    .select("id, latitude, longitude")
+    .in("id", addressIds);
+
+  if (error) throw error;
+
+  const map = new Map();
+  (data || []).forEach((address) => {
+    map.set(address.id, {
+      latitude: Number(address.latitude),
+      longitude: Number(address.longitude),
+    });
+  });
+
+  return map;
+};
+
+const fetchEtaDurations = async ({ restaurant, destinations }) => {
+  if (!destinations || destinations.length === 0) {
+    return [];
+  }
+
+  const apiKey = getOpenRouteServiceApiKey();
+  const response = await fetch(
+    "https://api.openrouteservice.org/v2/matrix/driving-car",
+    {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        locations: [
+          [restaurant.longitude, restaurant.latitude],
+          ...destinations.map((destination) => [destination.longitude, destination.latitude]),
+        ],
+        metrics: ["duration"],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `OpenRouteService error: ${response.status} ${response.statusText} ${errorText}`
+    );
+  }
+
+  const payload = await response.json();
+  const durations = payload?.durations?.[0]?.slice(1) || [];
+
+  return durations;
+};
 
 /**
  * CREATE ORDER
  */
-export const createOrder = async ({ items, user_id }) => {
+export const createOrder = async ({ items, user_id, address_id }) => {
   if (!items || items.length === 0) {
     throw new Error("Order items required");
   }
 
   if (!user_id) {
     throw new Error("User ID required");
+  }
+
+  if (!address_id) {
+    throw new Error("Address ID required");
   }
 
   // Validate stock availability BEFORE creating order
@@ -43,6 +168,7 @@ export const createOrder = async ({ items, user_id }) => {
     .insert([
       {
         user_id,
+        address_id,
         total_amount: total,
         order_status: "pending",
       },
@@ -145,7 +271,13 @@ export const getOrdersByUserId = async (userId) => {
  * UPDATE ORDER STATUS
  */
 export const updateOrderStatus = async (id, status) => {
-  const allowedStatuses = ["pending", "confirmed", "delivered", "cancelled"];
+  const allowedStatuses = [
+    "pending",
+    "confirmed",
+    "dispatched",
+    "delivered",
+    "cancelled",
+  ];
 
   if (!allowedStatuses.includes(status)) {
     throw new Error("Invalid order status");
@@ -164,6 +296,144 @@ export const updateOrderStatus = async (id, status) => {
   }
 
   return data[0];
+};
+
+/**
+ * GET ORDER ETA
+ */
+export const getOrderEta = async ({ orderId, requesterUserId }) => {
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id, user_id, order_status, address_id")
+    .eq("id", orderId)
+    .single();
+
+  if (error) throw error;
+  if (!order) throw new Error("Order not found");
+
+  if (requesterUserId && order.user_id !== requesterUserId) {
+    throw new Error("Forbidden");
+  }
+
+  if (order.order_status !== "dispatched") {
+    throw new Error("Order not dispatched");
+  }
+
+  const restaurant = getRestaurantLocation();
+  const customer = await getOrderDeliveryCoordinates({
+    userId: order.user_id,
+    addressId: order.address_id,
+  });
+
+  const durations = await fetchEtaDurations({
+    restaurant,
+    destinations: [customer],
+  });
+  const durationSeconds = durations[0];
+
+  if (!Number.isFinite(durationSeconds)) {
+    throw new Error("ETA unavailable");
+  }
+
+  return {
+    order_id: order.id,
+    status: order.order_status,
+    eta_seconds: Math.round(durationSeconds),
+    eta_minutes: Math.max(1, Math.round(durationSeconds / 60)),
+  };
+};
+
+/**
+ * GET ETA LIST
+ */
+export const getOrdersEtaList = async ({ userId } = {}) => {
+  let query = supabase
+    .from("orders")
+    .select("id, user_id, order_status, address_id")
+    .order("created_at", { ascending: false });
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data: orders, error } = await query;
+
+  if (error) throw error;
+
+  const addressIds = Array.from(
+    new Set(
+      (orders || [])
+        .filter((order) => order.address_id)
+        .map((order) => order.address_id)
+    )
+  );
+
+  const addressMap = await getAddressCoordinatesByIds(addressIds);
+  const restaurant = getRestaurantLocation();
+
+  const etaResults = (orders || []).map((order) => ({
+    order_id: order.id,
+    status: order.order_status,
+    address_id: order.address_id || null,
+    eta_seconds: null,
+    eta_minutes: null,
+    eta_message: null,
+  }));
+
+  const validOrders = etaResults
+    .map((result, index) => ({ result, order: orders[index] }))
+    .filter(({ order, result }) => {
+      if (order.order_status !== "dispatched") {
+        result.eta_message = "Yet to be dispatched";
+        return false;
+      }
+
+      if (!order.address_id) {
+        result.eta_message = "Order address missing";
+        return false;
+      }
+
+      const address = addressMap.get(order.address_id);
+      if (!address) {
+        result.eta_message = "Order address not found";
+        return false;
+      }
+
+      if (
+        !Number.isFinite(address.latitude) ||
+        !Number.isFinite(address.longitude)
+      ) {
+        result.eta_message = "Order address coordinates missing";
+        return false;
+      }
+
+      return true;
+    })
+    .map(({ order, result }) => ({
+      order,
+      result,
+      destination: addressMap.get(order.address_id),
+    }));
+
+  const batches = chunkArray(validOrders, 50);
+
+  for (const batch of batches) {
+    const destinations = batch.map((item) => item.destination);
+    const durations = await fetchEtaDurations({ restaurant, destinations });
+
+    batch.forEach((item, index) => {
+      const durationSeconds = durations[index];
+      if (!Number.isFinite(durationSeconds)) {
+        item.result.eta_message = "ETA unavailable";
+        return;
+      }
+
+      item.result.eta_seconds = Math.round(durationSeconds);
+      item.result.eta_minutes = Math.max(1, Math.round(durationSeconds / 60));
+    });
+  }
+
+  return etaResults;
 };
 
 /**
