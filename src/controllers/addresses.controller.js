@@ -2,6 +2,7 @@ import {
   listAddresses,
   createAddress,
   updateAddress,
+  updateAddressCoordinates as updateAddressCoordinatesService,
   deleteAddress,
 } from "../services/addresses.services.js";
 
@@ -102,6 +103,54 @@ export const editAddress = async (req, res) => {
     }
 
     return res.status(500).json({ error: "Failed to update address" });
+  }
+};
+
+export const updateAddressCoordinates = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const latitude = req.body?.latitude;
+    const longitude = req.body?.longitude;
+
+    if (latitude == null || longitude == null) {
+      return res
+        .status(400)
+        .json({ error: "Latitude and longitude are required" });
+    }
+
+    const latNumber = Number(latitude);
+    const lngNumber = Number(longitude);
+
+    if (!Number.isFinite(latNumber) || !Number.isFinite(lngNumber)) {
+      return res
+        .status(400)
+        .json({ error: "Latitude and longitude must be numbers" });
+    }
+
+    const address = await updateAddressCoordinatesService(
+      userId,
+      req.params.id,
+      latNumber,
+      lngNumber
+    );
+
+    return res.json({
+      message: "Address coordinates updated",
+      address,
+    });
+  } catch (err) {
+    if (err.message === "Address not found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    return res
+      .status(500)
+      .json({ error: "Failed to update address coordinates" });
   }
 };
 

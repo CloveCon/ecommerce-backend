@@ -2,6 +2,7 @@ import {
   getAdminOrders,
   getOrderEta,
   getOrdersEtaList,
+  assignOrderRider,
 } from "../services/orders.services.js";
 
 export const fetchAdminOrders = async (req, res) => {
@@ -53,5 +54,39 @@ export const fetchAdminOrdersEtaList = async (req, res) => {
     return res.json({ data });
   } catch (err) {
     return res.status(500).json({ error: "Failed to fetch ETA list" });
+  }
+};
+
+export const assignRiderToOrder = async (req, res) => {
+  try {
+    const riderId = req.body?.rider_id;
+
+    if (!riderId) {
+      return res.status(400).json({ error: "rider_id is required" });
+    }
+
+    const order = await assignOrderRider({
+      orderId: req.params.id,
+      riderId,
+    });
+
+    return res.json({
+      message: "Rider assigned",
+      order,
+    });
+  } catch (err) {
+    if (
+      err.message === "Rider not found" ||
+      err.message === "Admin is not a rider" ||
+      err.message === "Rider is inactive"
+    ) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (err.message === "Order not found") {
+      return res.status(404).json({ error: err.message });
+    }
+
+    return res.status(500).json({ error: "Failed to assign rider" });
   }
 };

@@ -183,6 +183,30 @@ export const updateAddress = async (userId, addressId, updates) => {
   return data;
 };
 
+export const updateAddressCoordinates = async (
+  userId,
+  addressId,
+  latitude,
+  longitude
+) => {
+  const { data, error } = await supabaseAdmin
+    .from("user_addresses")
+    .update({
+      latitude,
+      longitude,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", addressId)
+    .eq("user_id", userId)
+    .select(ADDRESS_FIELDS.join(", "))
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error("Address not found");
+
+  return data;
+};
+
 export const deleteAddress = async (userId, addressId) => {
   const { data, error } = await supabaseAdmin
     .from("user_addresses")

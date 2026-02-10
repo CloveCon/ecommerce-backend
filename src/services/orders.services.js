@@ -437,6 +437,34 @@ export const getOrdersEtaList = async ({ userId } = {}) => {
 };
 
 /**
+ * ASSIGN RIDER TO ORDER
+ */
+export const assignOrderRider = async ({ orderId, riderId }) => {
+  const { data: rider, error: riderError } = await supabaseAdmin
+    .from("admins")
+    .select("id, role, is_active")
+    .eq("id", riderId)
+    .single();
+
+  if (riderError) throw riderError;
+  if (!rider) throw new Error("Rider not found");
+  if (rider.role !== "rider") throw new Error("Admin is not a rider");
+  if (rider.is_active === false) throw new Error("Rider is inactive");
+
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .update({ rider_id: riderId })
+    .eq("id", orderId)
+    .select("id, rider_id")
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error("Order not found");
+
+  return data;
+};
+
+/**
  * GET ORDERS (SEARCH + FILTER + PAGINATION)
  */
 export const getAdminOrders = async ({
