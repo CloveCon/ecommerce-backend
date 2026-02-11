@@ -23,8 +23,3 @@ export const adminAuth = (req, res, next) => {
   }
 };
 
-
-//   // TEMPORARY: bypass authentication for development TESTING PURPOSES ONLY
-// export const adminAuth = (req, res, next) => {
-//   next();
-// };
