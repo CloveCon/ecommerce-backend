@@ -4,6 +4,24 @@ import { searchProducts, getSuggestions } from "../controllers/products.controll
 
 const router = express.Router();
 
+
+router.get("/api/products/:slug", async (req, res) => {
+  const slug = req.params.slug;
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("slug")
+    .eq("slug", slug);
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+  if (!data || !data.length) {
+    return res.status(404).json({ error: "Product not found" });
+  }
+  res.json(data[0]);
+});
+
 // SEARCH products
 router.get("/search", searchProducts);
 
@@ -27,10 +45,13 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const { name, description, price, category_id, is_veg, image_url } = req.body;
 
+  // Automatically generate slug from name
+  const slug = name.toLowerCase().replace(/\s+/g, "-");
+
   const { data, error } = await supabase
     .from("products")
     .insert([
-      { name, description, price, category_id, is_veg, image_url }
+      { name, description, price, category_id, is_veg, image_url, slug }
     ]);
 
   if (error) {
@@ -47,6 +68,9 @@ router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const { name, description, price, category_id, is_veg, image_url } = req.body;
 
+  // Automatically generate slug from name
+  const slug = name.toLowerCase().replace(/\s+/g, "-");
+
   const { data, error } = await supabase
     .from("products")
     .update({
@@ -55,7 +79,8 @@ router.put("/:id", async (req, res) => {
       price,
       category_id,
       is_veg,
-      image_url
+      image_url,
+      slug
     })
     .eq("id", id);
 

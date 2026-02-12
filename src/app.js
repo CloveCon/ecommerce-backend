@@ -20,6 +20,7 @@ import reviewsRoutes from "./routes/reviews.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
 import riderRoutes from "./routes/rider.routes.js";
+import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 
 const app = express();
 
@@ -58,7 +59,6 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-
 // API Routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -78,6 +78,7 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/rider", riderRoutes);
+app.use("/api/admin/categories", adminCategoriesRoutes);
 
 export default app;
 
