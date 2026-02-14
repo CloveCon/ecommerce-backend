@@ -47,7 +47,14 @@ router.post("/login", async (req, res) => {
   res.cookie("admin_token", token, getCookieOptions(24 * 60 * 60 * 1000));
 
   res.json({
-    message: "Login successful"
+    message: "Login successful",
+    token,
+    admin: {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+    },
   });
 });
 

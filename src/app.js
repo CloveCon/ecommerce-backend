@@ -28,8 +28,11 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN || true,
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   })
 );
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
