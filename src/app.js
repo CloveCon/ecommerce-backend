@@ -25,7 +25,7 @@ const app = express();
 
 
 app.use(cors({
-  origin: "https://grilladinadmin.netlify.app",
+  origin: ["https://ecommerce-admin-panel-2v7h.onrender.com"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
