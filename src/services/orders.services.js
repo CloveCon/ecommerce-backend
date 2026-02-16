@@ -350,6 +350,7 @@ export const getOrdersEtaList = async ({ userId } = {}) => {
   let query = supabase
     .from("orders")
     .select("id, user_id, order_status, address_id")
+    .eq("order_status", "dispatched")
     .order("created_at", { ascending: false });
 
   if (userId) {
