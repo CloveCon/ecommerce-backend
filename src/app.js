@@ -24,7 +24,12 @@ import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+  origin: "https://grilladinadmin.netlify.app",
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
