@@ -18,14 +18,20 @@ import adminReviewsRoutes from "./routes/admin.reviews.routes.js";
 import reviewsRoutes from "./routes/reviews.routes.js";
 import riderRoutes from "./routes/rider.routes.js";
 import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
-
+import razorpayRoutes from "./routes/razorpay.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import addressRoutes from "./routes/address.routes.js";
 
 
 const app = express();
 
 
 app.use(cors({
-  origin: ["https://ecommerce-admin-panel-2v7h.onrender.com"],
+  origin: [
+    "https://ecommerce-admin-panel-2v7h.onrender.com",
+    "http://localhost:3001",
+    "http://localhost:3000"
+  ],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -60,14 +66,13 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-
-
 // API Routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/addresses", addressRoutes);
 app.use("/api/admin/products", adminProductRoutes);
 app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
@@ -78,6 +83,8 @@ app.use("/api/admin/reviews", adminReviewsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
+app.use("/api/razorpay", razorpayRoutes);
+app.use("/api/auth", authRoutes);
 
 export default app;
 
