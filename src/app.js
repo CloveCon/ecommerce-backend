@@ -8,6 +8,7 @@ import categoryRoutes from "./routes/category.routes.js";
 import orderRoutes from "./routes/order.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import adminOrderRoutes from "./routes/admin.order.routes.js";
+import adminAdminsRoutes from "./routes/admin.admins.routes.js";
 import adminProductRoutes from "./routes/admin.product.routes.js";
 import adminAuthRoutes from "./routes/admin.auth.routes.js";
 import adminPaymentRoutes from "./routes/admin.payment.routes.js";
@@ -19,6 +20,7 @@ import reviewsRoutes from "./routes/reviews.routes.js";
 import riderRoutes from "./routes/rider.routes.js";
 import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 import razorpayRoutes from "./routes/razorpay.routes.js";
+import adminProfileRoutes from "./routes/admin.profile.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
 
@@ -72,6 +74,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin/orders", adminOrderRoutes);
+app.use("/api/admin/admins", adminAdminsRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/admin/products", adminProductRoutes);
 app.use("/api/admin/auth", adminAuthRoutes);
@@ -85,6 +88,7 @@ app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin/profile", adminProfileRoutes);
 
 export default app;
 

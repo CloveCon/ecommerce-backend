@@ -6,12 +6,15 @@ import {
   fetchOrderEta,
   fetchMyOrdersEtaList,
   updateOrderStatus,
+  fetchOrderById,
 } from "../controllers/orders.controller.js";
 import { userAuth } from "../middlewares/userAuthorization.js";
 
+
 const router = express.Router();
 
-router.post("/", createOrder);
+// Require authentication for order creation
+router.post("/", userAuth, createOrder);
 
 /**
  * GET ALL ORDERS
@@ -37,5 +40,10 @@ router.get("/:id/eta", userAuth, fetchOrderEta);
  * UPDATE ORDER STATUS
  */
 router.put("/:id/status", updateOrderStatus);
+
+/**
+ * GET ORDER BY ID (with access control)
+ */
+router.get("/:id", userAuth, fetchOrderById);
 
 export default router;

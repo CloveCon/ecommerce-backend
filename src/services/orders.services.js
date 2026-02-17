@@ -1,5 +1,33 @@
 import supabase, { supabaseAdmin } from "../config/supabase.js";
 
+// GET order by ID with items
+export const getOrderById = async (orderId) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      user_id,
+      total_amount,
+      order_status,
+      payment_status,
+      payment_method,
+      paid_at,
+      created_at,
+      razorpay_order_id,
+      razorpay_payment_id,
+      order_items (
+        product_id,
+        product_name,
+        quantity,
+        price
+      )
+    `)
+    .eq("id", orderId)
+    .single();
+  if (error) return null;
+  return data;
+};
+
 const parseCoordinate = (value, label) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -124,45 +152,178 @@ const fetchEtaDurations = async ({ restaurant, destinations }) => {
 /**
  * CREATE ORDER
  */
-export const createOrder = async ({ items, user_id, address_id }) => {
-  if (!items || items.length === 0) {
-    throw new Error("Order items required");
+export const createOrder = async ({ items, user_id, address_id, payment_method }) => {
+  try {
+    if (!items || items.length === 0) {
+      throw new Error("Order items required");
+    }
+    if (!user_id) {
+      throw new Error("User ID required");
+    }
+    if (!address_id) {
+      throw new Error("Address ID required");
+    }
+    if (!payment_method || !["cod", "razorpay"].includes(payment_method)) {
+      throw new Error("Invalid or missing payment_method");
+    }
+
+    // Recalculate total from DB
+    let total = 0;
+    for (const item of items) {
+      const { data: product, error: productError } = await supabase
+        .from("products")
+        .select("stock, name, price")
+        .eq("id", item.product_id)
+        .single();
+      if (productError) throw productError;
+      if (!product) {
+        throw new Error(`Product with ID ${item.product_id} not found`);
+      }
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
+      }
+      total += product.price * item.quantity;
+      item.price_at_purchase = product.price; // Use price_at_purchase for DB
+      item.product_name = product.name;
+    }
+
+    let order_status, payment_status, razorpay_order_id = null;
+    if (payment_method === "cod") {
+      order_status = "confirmed";
+      payment_status = "pending";
+    } else if (payment_method === "razorpay") {
+      order_status = "pending";
+      payment_status = "pending";
+    }
+
+    // Insert order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert([
+        {
+          user_id,
+          address_id,
+          total_amount: total,
+          order_status,
+          payment_status,
+          payment_method,
+        },
+      ])
+      .select()
+      .single();
+    if (orderError) throw orderError;
+
+    // Insert order_items
+    const orderItems = items.map((item) => ({
+      order_id: order.id,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      price_at_purchase: item.price_at_purchase,
+    }));
+    const { error: orderItemsError } = await supabase
+      .from("order_items")
+      .insert(orderItems);
+    if (orderItemsError) throw orderItemsError;
+
+    // COD: Reduce stock immediately
+    if (payment_method === "cod") {
+      for (const item of items) {
+        const { data: product, error: productError } = await supabase
+          .from("products")
+          .select("stock")
+          .eq("id", item.product_id)
+          .single();
+        if (productError) throw productError;
+        const newStock = product.stock - item.quantity;
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ stock: newStock })
+          .eq("id", item.product_id);
+        if (updateError) throw updateError;
+      }
+      return { ...order, orderItems };
+    }
+
+    // Razorpay: Create Razorpay order, do NOT reduce stock
+    if (payment_method === "razorpay") {
+      const { createRazorpayOrder } = await import("../services/razorpay.services.js");
+      // Ensure receipt is always <= 40 chars (Razorpay limit)
+      const shortReceipt = `o_${order.id.slice(0, 38)}`; // 2 + 38 = 40
+      const amount = Math.round(total * 100);
+      if (typeof amount !== 'number' || isNaN(amount)) {
+        throw new Error('Razorpay order amount is undefined or invalid');
+      }
+      let razorpayOrder;
+      try {
+        razorpayOrder = await createRazorpayOrder({ amount, currency: "INR", receipt: shortReceipt });
+      } catch (err) {
+        // Print as much info as possible, always log
+        console.error('RAZORPAY CREATE ERROR:', err);
+        if (err && err.response && err.response.body) {
+          console.error('RAZORPAY ERROR RESPONSE BODY:', err.response.body);
+        }
+        if (err && err.stack) {
+          console.error('RAZORPAY ERROR STACK:', err.stack);
+        }
+        throw new Error('Failed to create Razorpay order. Please try again.');
+      }
+      if (!razorpayOrder || !razorpayOrder.id) {
+        throw new Error('Failed to create Razorpay order. Please try again.');
+      }
+      razorpay_order_id = razorpayOrder.id;
+      // Save razorpay_order_id
+      await supabase
+        .from("orders")
+        .update({ razorpay_order_id })
+        .eq("id", order.id);
+      // Return a consistent object for frontend
+      return {
+        ...order,
+        orderItems,
+        razorpay: {
+          id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+        },
+      };
+    }
+    return { ...order, orderItems };
+  } catch (err) {
+    console.error("CREATE ORDER SERVICE ERROR:", err);
+    throw err;
   }
 
-  if (!user_id) {
-    throw new Error("User ID required");
-  }
-
-  if (!address_id) {
-    throw new Error("Address ID required");
-  }
-
-  // Validate stock availability BEFORE creating order
+  // Recalculate total from DB
+  let total = 0;
   for (const item of items) {
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("stock, name")
+      .select("stock, name, price")
       .eq("id", item.product_id)
       .single();
-
     if (productError) throw productError;
-
     if (!product) {
       throw new Error(`Product with ID ${item.product_id} not found`);
     }
-
     if (product.stock < item.quantity) {
-      throw new Error(
-        `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
-      );
+      throw new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`);
     }
+    total += product.price * item.quantity;
+    item.price_at_purchase = product.price;
+    item.product_name = product.name;
   }
 
-  const total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  let order_status, payment_status, razorpay_order_id = null;
+  if (payment_method === "cod") {
+    order_status = "confirmed";
+    payment_status = "pending";
+  } else if (payment_method === "razorpay") {
+    order_status = "pending";
+    payment_status = "pending";
+  }
 
+  // Insert order
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert([
@@ -170,49 +331,95 @@ export const createOrder = async ({ items, user_id, address_id }) => {
         user_id,
         address_id,
         total_amount: total,
-        order_status: "pending",
+        order_status,
+        payment_status,
+        payment_method,
       },
     ])
     .select()
     .single();
-
   if (orderError) throw orderError;
 
+  // Insert order_items
   const orderItems = items.map((item) => ({
     order_id: order.id,
     product_id: item.product_id,
     product_name: item.product_name,
     quantity: item.quantity,
-    price: item.price,
+    price_at_purchase: item.price_at_purchase,
   }));
-
   const { error: orderItemsError } = await supabase
     .from("order_items")
     .insert(orderItems);
-
   if (orderItemsError) throw orderItemsError;
 
-  // Decrement product stock for each item (stock already validated)
-  for (const item of items) {
-    const { data: product, error: productError } = await supabase
-      .from("products")
-      .select("stock")
-      .eq("id", item.product_id)
-      .single();
-
-    if (productError) throw productError;
-
-    const newStock = product.stock - item.quantity;
-
-    const { error: updateError } = await supabase
-      .from("products")
-      .update({ stock: newStock })
-      .eq("id", item.product_id);
-
-    if (updateError) throw updateError;
+  // COD: Reduce stock immediately
+  if (payment_method === "cod") {
+    for (const item of items) {
+      const { data: product, error: productError } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", item.product_id)
+        .single();
+      if (productError) throw productError;
+      const newStock = product.stock - item.quantity;
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ stock: newStock })
+        .eq("id", item.product_id);
+      if (updateError) throw updateError;
+    }
+    return { ...order, orderItems };
   }
 
-  return order;
+  // Razorpay: Create Razorpay order, do NOT reduce stock
+  if (payment_method === "razorpay") {
+    // Create Razorpay order
+    const { createRazorpayOrder } = await import("../services/razorpay.services.js");
+    // Ensure receipt is always <= 40 chars (Razorpay limit)
+    const shortReceipt = `o_${order.id.slice(0, 38)}`; // 2 + 38 = 40
+    const amount = Math.round(total * 100);
+    console.log('RAZORPAY ORDER DEBUG:', { amount, currency: 'INR', receipt: shortReceipt });
+    if (typeof amount !== 'number' || isNaN(amount)) {
+      throw new Error('Razorpay order amount is undefined or invalid');
+    }
+    let razorpayOrder;
+    try {
+      console.log('About to call createRazorpayOrder');
+      razorpayOrder = await createRazorpayOrder({ amount, currency: "INR", receipt: shortReceipt });
+      console.log('Razorpay order created:', razorpayOrder);
+    } catch (err) {
+      // Print as much info as possible, always log
+      console.error('RAZORPAY CREATE ERROR:', err);
+      if (err && err.response && err.response.body) {
+        console.error('RAZORPAY ERROR RESPONSE BODY:', err.response.body);
+      }
+      if (err && err.stack) {
+        console.error('RAZORPAY ERROR STACK:', err.stack);
+      }
+      throw new Error('Failed to create Razorpay order. Please try again.');
+    }
+    if (!razorpayOrder || !razorpayOrder.id) {
+      throw new Error('Failed to create Razorpay order. Please try again.');
+    }
+    razorpay_order_id = razorpayOrder.id;
+    // Save razorpay_order_id
+    await supabase
+      .from("orders")
+      .update({ razorpay_order_id })
+      .eq("id", order.id);
+    // Return a consistent object for frontend
+    return {
+      ...order,
+      orderItems,
+      razorpay: {
+        id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+      },
+    };
+  }
+  return { ...order, orderItems };
 };
 
 /**
@@ -256,13 +463,15 @@ export const getOrdersByUserId = async (userId) => {
         product_id,
         product_name,
         quantity,
-        price
+        price_at_purchase
       )
     `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   return data || [];
 };
@@ -454,9 +663,9 @@ export const assignOrderRider = async ({ orderId, riderId }) => {
 
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .update({ rider_id: riderId })
+    .update({ rider_id: riderId, order_status: "dispatched" })
     .eq("id", orderId)
-    .select("id, rider_id")
+    .select("id, rider_id, order_status")
     .single();
 
   if (error) throw error;
