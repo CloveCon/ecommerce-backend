@@ -84,9 +84,9 @@ export const getRiderDeliveries = async ({
 
   const { data: items, error: itemsError } = orderIds.length
     ? await supabaseAdmin
-        .from("order_items")
-        .select("order_id, product_id, product_name, quantity, price")
-        .in("order_id", orderIds)
+      .from("order_items")
+      .select("order_id, product_id, product_name, quantity, price_at_purchase")
+      .in("order_id", orderIds)
     : { data: [], error: null };
 
   if (itemsError) throw itemsError;
