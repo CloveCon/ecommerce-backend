@@ -6,16 +6,12 @@ import { userAuth } from "../middlewares/userAuthorization.js";
 
 const router = express.Router();
 
-const getCookieOptions = (maxAgeMs) => {
-  // For local dev: sameSite: 'none', secure: false. For production: sameSite: 'none', secure: true (HTTPS only)
-  const isProduction = process.env.NODE_ENV === "production";
-  return {
-    httpOnly: true,
-    secure: isProduction ? true : false, // false for local HTTP, true for HTTPS/production
-    sameSite: "none", // must be 'none' for cross-origin cookies
-    maxAge: maxAgeMs,
-  };
-};
+const getCookieOptions = (maxAgeMs) => ({
+  httpOnly: true,
+  secure: true, // Always secure for cross-origin
+  sameSite: "none", // Always None for cross-origin
+  maxAge: maxAgeMs,
+});
 
 router.post("/register", async (req, res) => {
   try {

@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -11,6 +10,7 @@ import adminOrderRoutes from "./routes/admin.order.routes.js";
 import adminAdminsRoutes from "./routes/admin.admins.routes.js";
 import adminProductRoutes from "./routes/admin.product.routes.js";
 import adminAuthRoutes from "./routes/admin.auth.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import adminPaymentRoutes from "./routes/admin.payment.routes.js";
 import adminDashboardRoutes from "./routes/admin.dashboard.routes.js";
 import adminCustomerRoutes from "./routes/admin.customer.routes.js";
@@ -24,13 +24,16 @@ import adminProfileRoutes from "./routes/admin.profile.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
 
+import addressRoutes from "./routes/address.routes.js";
+import adminAdminsRoutes from "./routes/admin.admins.routes.js";
+import adminProfileRoutes from "./routes/admin.profile.routes.js";
 
 const app = express();
-
 
 app.use(cors({
   origin: [
     "https://ecommerce-admin-panel-2v7h.onrender.com",
+    "https://ecommerce-website-bsr5.onrender.com",
     "http://localhost:3001",
     "http://localhost:3000"
   ],
@@ -88,6 +91,10 @@ app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/address", addressRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/admin/admins", adminAdminsRoutes);
 app.use("/api/admin/profile", adminProfileRoutes);
 
 export default app;
