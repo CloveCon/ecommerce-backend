@@ -472,6 +472,7 @@ export const getOrdersByUserId = async (userId) => {
       )
     `)
     .eq("user_id", userId)
+    .eq("order_status", "delivered")
     .order("created_at", { ascending: false });
 
   if (error) {

@@ -1,8 +1,13 @@
+
 import express from "express";
 import supabase from "../config/supabase.js";
 import { searchProducts, getSuggestions } from "../controllers/products.controller.js";
+import productReviewsRouter from "./product.reviews.routes.js";
 
 const router = express.Router();
+
+// Mount product reviews router
+router.use( "/:productId/reviews", productReviewsRouter );
 
 
 router.get("/api/products/:slug", async (req, res) => {

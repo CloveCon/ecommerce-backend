@@ -3,6 +3,12 @@ import supabase from "../config/supabase.js";
 
 
 export const verifyRazorpayPaymentService = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature, dbOrderId }) => {
+    console.log("[verifyRazorpayPaymentService] Called with:", {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      dbOrderId
+    });
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !dbOrderId) {
     throw new Error("Missing required fields");
   }
@@ -17,9 +23,13 @@ export const verifyRazorpayPaymentService = async ({ razorpay_order_id, razorpay
     throw new Error("Order not found");
   }
 
+  console.log("[verifyRazorpayPaymentService] DB order:", order);
+
   if (order.razorpay_order_id !== razorpay_order_id) {
     throw new Error("Razorpay order ID mismatch");
   }
+
+  console.log("[verifyRazorpayPaymentService] Order ID matches. Proceeding to signature check.");
 
   if (order.payment_status === "success") {
     return {
@@ -34,9 +44,13 @@ export const verifyRazorpayPaymentService = async ({ razorpay_order_id, razorpay
   hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
   const generatedSignature = hmac.digest("hex");
 
+  console.log("[verifyRazorpayPaymentService] Generated signature:", generatedSignature);
+  console.log("[verifyRazorpayPaymentService] Provided signature:", razorpay_signature);
+
   let payment_status, order_status, paid_at = null;
   let failure_reason = null;
   if (generatedSignature === razorpay_signature) {
+    console.log("[verifyRazorpayPaymentService] Signature match. Payment verified.");
     const { data: orderItems, error: itemsError } = await supabase
       .from("order_items")
       .select("product_id, quantity")
@@ -59,6 +73,7 @@ export const verifyRazorpayPaymentService = async ({ razorpay_order_id, razorpay
       failure_reason = err.message || "Stock reduction failed";
     }
   } else {
+    console.log("[verifyRazorpayPaymentService] Signature mismatch. Payment verification failed.");
     payment_status = "failed";
     order_status = "cancelled";
     failure_reason = "Signature mismatch";
