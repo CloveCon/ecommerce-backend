@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -19,8 +18,9 @@ import adminReviewsRoutes from "./routes/admin.reviews.routes.js";
 import reviewsRoutes from "./routes/reviews.routes.js";
 import riderRoutes from "./routes/rider.routes.js";
 import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
-
-
+import addressRoutes from "./routes/address.routes.js";
+import adminAdminsRoutes from "./routes/admin.admins.routes.js";
+import adminProfileRoutes from "./routes/admin.profile.routes.js";
 
 const app = express();
 
@@ -65,8 +65,6 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-
-
 // API Routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
@@ -84,6 +82,10 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/address", addressRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/admin/admins", adminAdminsRoutes);
+app.use("/api/admin/profile", adminProfileRoutes);
 
 export default app;
 

@@ -230,7 +230,7 @@ export const getOrders = async () => {
       order_items (
         product_id,
         quantity,
-        price
+        price_at_purchasew
       )
     `)
     .order("created_at", { ascending: false });
@@ -256,7 +256,7 @@ export const getOrdersByUserId = async (userId) => {
         product_id,
         product_name,
         quantity,
-        price
+        price_at_purchase
       )
     `)
     .eq("user_id", userId)
@@ -494,7 +494,8 @@ export const getAdminOrders = async ({
 
       order_items (
         quantity,
-        product_name
+        product_name,
+        price_at_purchase
       )
     `,
       { count: "exact" }
