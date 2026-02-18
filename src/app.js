@@ -10,6 +10,7 @@ import paymentRoutes from "./routes/payment.routes.js";
 import adminOrderRoutes from "./routes/admin.order.routes.js";
 import adminProductRoutes from "./routes/admin.product.routes.js";
 import adminAuthRoutes from "./routes/admin.auth.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 import adminPaymentRoutes from "./routes/admin.payment.routes.js";
 import adminDashboardRoutes from "./routes/admin.dashboard.routes.js";
 import adminCustomerRoutes from "./routes/admin.customer.routes.js";
@@ -82,6 +83,7 @@ app.use("/api/admin/reviews", adminReviewsRoutes);
 app.use("/api/reviews", reviewsRoutes);
 app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
+app.use("/api/auth", authRoutes);
 
 export default app;
 
