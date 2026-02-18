@@ -24,12 +24,17 @@ import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 
 const app = express();
 
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || true,
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: [
+    "https://ecommerce-admin-panel-2v7h.onrender.com",
+    "https://ecommerce-website-bsr5.onrender.com/",
+    "http://localhost:3001",
+    "http://localhost:3000"
+  ],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
