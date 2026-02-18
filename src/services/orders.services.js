@@ -294,8 +294,20 @@ export const createOrder = async ({ items, user_id, address_id, payment_method }
     throw err;
   }
 
-  // Recalculate total from DB
-  let total = 0;
+  if (!user_id) {
+    throw new Error("User ID required");
+  }
+
+  if (!address_id) {
+    throw new Error("Address ID required");
+  }
+
+  // Debug: log received items
+  console.log("[createOrder] Order items received:", JSON.stringify(items, null, 2));
+  items.forEach((item, idx) => {
+    console.log(`[createOrder] Item #${idx + 1} - product_id: ${item.product_id}, quantity: ${item.quantity}, price: ${item.price}, product_name: ${item.product_name}`);
+  });
+  // Validate stock availability BEFORE creating order
   for (const item of items) {
     const { data: product, error: productError } = await supabase
       .from("products")
@@ -314,39 +326,32 @@ export const createOrder = async ({ items, user_id, address_id, payment_method }
     item.product_name = product.name;
   }
 
-  let order_status, payment_status, razorpay_order_id = null;
-  if (payment_method === "cod") {
-    order_status = "confirmed";
-    payment_status = "pending";
-  } else if (payment_method === "razorpay") {
-    order_status = "pending";
-    payment_status = "pending";
-  }
+  const total = items.reduce(
+    (sum, item) => sum + (typeof item.price === 'number' ? item.price : 0) * item.quantity,
+    0
+  );
+  console.log("[createOrder] Calculated total_amount:", total);
 
-  // Insert order
+  const orderPayload = {
+    user_id,
+    address_id,
+    total_amount: total,
+    order_status: "pending",
+  };
+  console.log("[createOrder] Order payload to insert:", JSON.stringify(orderPayload, null, 2));
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .insert([
-      {
-        user_id,
-        address_id,
-        total_amount: total,
-        order_status,
-        payment_status,
-        payment_method,
-      },
-    ])
+    .insert([orderPayload])
     .select()
     .single();
   if (orderError) throw orderError;
 
-  // Insert order_items
   const orderItems = items.map((item) => ({
     order_id: order.id,
     product_id: item.product_id,
     product_name: item.product_name,
     quantity: item.quantity,
-    price_at_purchase: item.price_at_purchase,
+    price_at_purchase: item.price,
   }));
   const { error: orderItemsError } = await supabase
     .from("order_items")

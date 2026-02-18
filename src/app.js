@@ -21,12 +21,8 @@ import riderRoutes from "./routes/rider.routes.js";
 import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 import razorpayRoutes from "./routes/razorpay.routes.js";
 import adminProfileRoutes from "./routes/admin.profile.routes.js";
-import authRoutes from "./routes/auth.routes.js";
 import addressRoutes from "./routes/address.routes.js";
 
-import addressRoutes from "./routes/address.routes.js";
-import adminAdminsRoutes from "./routes/admin.admins.routes.js";
-import adminProfileRoutes from "./routes/admin.profile.routes.js";
 
 const app = express();
 
@@ -91,10 +87,7 @@ app.use("/api/rider", riderRoutes);
 app.use("/api/admin/categories", adminCategoriesRoutes);
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
-app.use("/api/addresses", addressRoutes);
-app.use("/api/admin/admins", adminAdminsRoutes);
 app.use("/api/admin/profile", adminProfileRoutes);
 
 export default app;

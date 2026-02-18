@@ -13,7 +13,6 @@ import { userAuth } from "../middlewares/userAuthorization.js";
 
 const router = express.Router();
 
-// Require authentication for order creation
 router.post("/", userAuth, createOrder);
 
 /**

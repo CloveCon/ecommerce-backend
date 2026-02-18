@@ -52,25 +52,33 @@ export const fetchMyOrders = async (req, res) => {
 
 export const createOrder = async (req, res) => {
   try {
-    // Always use user_id from backend, not frontend
+    const userId = req.user?.id;
+    console.log("[createOrder] userId:", userId);
+    console.log("[createOrder] req.body:", req.body);
+    if (!userId) {
+      console.warn("[createOrder] Unauthorized: No userId found in req.user");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     const order = await createOrderService({
       ...req.body,
-      user_id: req.user.id,
+      user_id: userId,
     });
-    // If order.razorpay exists, return it at the top level for frontend compatibility
+    console.log("[createOrder] Order created successfully:", order);
+    // Only send one response
     if (order.razorpay) {
-      res.json({
+      return res.json({
         message: "Order created successfully",
         razorpay: order.razorpay,
         order: { ...order, razorpay: undefined },
       });
     } else {
-      res.json({
+      return res.json({
         message: "Order created successfully",
         order,
       });
     }
   } catch (err) {
+    console.error("[createOrder] Error:", err);
     if (
       err.message === "Order items required" ||
       err.message === "User ID required" ||
@@ -87,7 +95,6 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: err.message });
     }
 
-    console.error("ORDER CREATE ERROR:", err);
     res.status(500).json({ error: "Failed to create order" });
   }
 };
