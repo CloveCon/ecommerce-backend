@@ -26,7 +26,7 @@ const app = express();
 app.use(cors({
   origin: [
     "https://ecommerce-admin-panel-2v7h.onrender.com",
-    "https://ecommerce-website-bsr5.onrender.com/",
+    "https://ecommerce-website-bsr5.onrender.com",
     "http://localhost:3001",
     "http://localhost:3000"
   ],
