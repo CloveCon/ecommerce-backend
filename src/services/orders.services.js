@@ -242,6 +242,19 @@ export const createOrder = async ({ items, user_id, address_id, payment_method }
           .eq("id", item.product_id);
         if (updateError) throw updateError;
       }
+      // Insert payment record for COD
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .insert([
+          {
+            order_id: order.id,
+            amount: order.total_amount,
+            payment_method: order.payment_method,
+            payment_status: order.payment_status,
+            transaction_id: null,
+          },
+        ]);
+      if (paymentError) throw paymentError;
       return { ...order, orderItems };
     }
 
@@ -277,6 +290,19 @@ export const createOrder = async ({ items, user_id, address_id, payment_method }
         .from("orders")
         .update({ razorpay_order_id })
         .eq("id", order.id);
+      // Insert payment record for Razorpay
+      const { error: paymentError } = await supabase
+        .from("payments")
+        .insert([
+          {
+            order_id: order.id,
+            amount: order.total_amount,
+            payment_method: order.payment_method,
+            payment_status: order.payment_status,
+            transaction_id: razorpayOrder.id,
+          },
+        ]);
+      if (paymentError) throw paymentError;
       // Return a consistent object for frontend
       return {
         ...order,
@@ -472,7 +498,6 @@ export const getOrdersByUserId = async (userId) => {
       )
     `)
     .eq("user_id", userId)
-    .eq("order_status", "delivered")
     .order("created_at", { ascending: false });
 
   if (error) {

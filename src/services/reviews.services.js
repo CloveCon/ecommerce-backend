@@ -15,8 +15,8 @@ export const getReviews = async () => {
         name,
         email
       ),
-      order_items (
-        product_name
+      products (
+        name
       )
     `)
     .order("created_at", { ascending: false });
@@ -30,7 +30,7 @@ export const getReviews = async () => {
     rating: r.rating,
     review: r.comment,
     date: r.created_at,
-    product: r.order_items?.product_name || "Unknown",
+    product: r.products?.name || "Unknown",
   }));
 };
 
@@ -73,12 +73,12 @@ export const getReviewsByProductId = async (productId) => {
       users (
         name
       ),
-      order_items!inner (
-        product_id,
-        product_name
+      products (
+        id,
+        name
       )
     `)
-    .eq("order_items.product_id", productId)
+    .eq("product_id", productId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -89,8 +89,8 @@ export const getReviewsByProductId = async (productId) => {
     rating: r.rating,
     review: r.comment,
     date: r.created_at,
-    product_id: r.order_items?.product_id,
-    product: r.order_items?.product_name || "Unknown",
+    product_id: r.products?.id,
+    product: r.products?.name || "Unknown",
   }));
 };
 

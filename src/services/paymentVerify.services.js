@@ -92,6 +92,19 @@ export const verifyRazorpayPaymentService = async ({ razorpay_order_id, razorpay
     .eq("id", dbOrderId);
   if (updateOrderError) throw updateOrderError;
 
+  // Update payment status in payments table if payment was successful
+  if (payment_status === "success") {
+    const { error: updatePaymentError } = await supabase
+      .from("payments")
+      .update({ payment_status: "success" })
+      .eq("order_id", dbOrderId);
+    if (updatePaymentError) {
+      console.error("[verifyRazorpayPaymentService] Failed to update payments table:", updatePaymentError);
+      throw updatePaymentError;
+    }
+    console.log("[verifyRazorpayPaymentService] Payment status updated to success for order_id:", dbOrderId);
+  }
+
   return {
     success: payment_status === "success",
     payment_status,
@@ -136,5 +149,13 @@ export const finalizeSuccessfulPayment = async ({ orderId, razorpay_payment_id }
     })
     .eq("id", orderId);
   if (updateOrderError) throw updateOrderError;
+
+  // Update payment status in payments table
+  const { error: updatePaymentError } = await supabase
+    .from("payments")
+    .update({ payment_status: "success" })
+    .eq("order_id", orderId);
+  if (updatePaymentError) throw updatePaymentError;
+
   return { success: true };
 };
