@@ -8,7 +8,7 @@ export const getCustomers = async ({ search = "", page = 1, limit = 10 }) => {
 
   const { data: users, count, error: usersError } = await supabase
     .from("users")
-    .select("id, name, email, phone, is_active, created_at", {
+    .select("id, name, email, phone, is_active, created_at, date_of_birth, anniversary", {
       count: "exact",
     })
     .or(`name.ilike.%${search}%,email.ilike.%${search}%`)
@@ -30,6 +30,8 @@ export const getCustomers = async ({ search = "", page = 1, limit = 10 }) => {
       name: user.name,
       email: user.email,
       phone: user.phone,
+      date_of_birth: user.date_of_birth || null,
+      anniversary: user.anniversary || null,
       totalOrders: userOrders.length,
       recentOrder:
         userOrders.length > 0

@@ -138,7 +138,7 @@ router.get("/me", userAuth, async (req, res) => {
 
     const { data: user, error } = await supabaseAdmin
       .from("users")
-      .select("id, name, email, date_of_birth, food_preference, allergies, is_active")
+      .select("id, name, email, date_of_birth, anniversary, food_preference, allergies, is_active")
       .eq("id", userId)
       .single();
 
@@ -155,6 +155,7 @@ router.get("/me", userAuth, async (req, res) => {
       name: user.name || "",
       email: user.email,
       date_of_birth: user.date_of_birth || null,
+      anniversary: user.anniversary || null,
       food_preference: user.food_preference || null,
       allergies: user.allergies || null,
     });
@@ -173,6 +174,7 @@ router.patch("/me", userAuth, async (req, res) => {
 
     const allowedFields = [
       "date_of_birth",
+      "anniversary",
       "food_preference",
       "allergies",
       "email",
@@ -194,7 +196,7 @@ router.patch("/me", userAuth, async (req, res) => {
       .from("users")
       .update(updates)
       .eq("id", userId)
-      .select("id, name, email, phone, date_of_birth, food_preference, allergies, is_active")
+      .select("id, name, email, phone, date_of_birth, anniversary, food_preference, allergies, is_active")
       .single();
 
     if (error || !user) {
@@ -213,6 +215,7 @@ router.patch("/me", userAuth, async (req, res) => {
         email: user.email,
         phone: user.phone || null,
         date_of_birth: user.date_of_birth || null,
+        anniversary: user.anniversary || null,
         food_preference: user.food_preference || null,
         allergies: user.allergies || null,
       },

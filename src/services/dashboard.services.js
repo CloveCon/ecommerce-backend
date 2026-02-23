@@ -24,9 +24,7 @@ export const getDashboardStats = async () => {
     supabase.rpc("get_weekly_revenue"),
     supabase
       .from("order_items")
-      .select("product_id, quantity, products(name)")
-      .order("quantity", { ascending: false })
-      .limit(1),
+      .select("product_name, quantity"),
     supabase.from("reviews").select("rating"),
     supabase.from("users").select("*", { count: "exact", head: true }),
   ]);
@@ -47,6 +45,17 @@ export const getDashboardStats = async () => {
     (ratings?.reduce((sum, r) => sum + r.rating, 0) || 0) /
     (ratings?.length || 1) || 0;
 
+  // Aggregate total quantity per product to find the top product
+  const productTotals = {};
+  (topProduct || []).forEach((item) => {
+    const name = item.product_name || "Unknown";
+    productTotals[name] = (productTotals[name] || 0) + (item.quantity || 0);
+  });
+  const topProductName =
+    Object.keys(productTotals).length > 0
+      ? Object.entries(productTotals).sort((a, b) => b[1] - a[1])[0][0]
+      : "N/A";
+
   return {
     totalOrders,
     pendingOrders,
@@ -54,7 +63,7 @@ export const getDashboardStats = async () => {
     totalRevenue,
     totalCustomers,
     revenueTrend,
-    topProduct: topProduct?.[0]?.products?.name || "N/A",
+    topProduct: topProductName,
     avgRating: avgRating.toFixed(1),
   };
 };

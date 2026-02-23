@@ -742,7 +742,37 @@ export const getAdminOrders = async ({
     );
 
   if (search) {
-    query = query.eq("id", search);
+    // Check if search looks like a UUID for exact order ID match
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(search)) {
+      query = query.eq("id", search);
+    } else {
+      // Find orders with matching product names
+      const { data: matchingItems } = await supabase
+        .from("order_items")
+        .select("order_id")
+        .ilike("product_name", `%${search}%`);
+      const productOrderIds = [...new Set((matchingItems || []).map(i => i.order_id))];
+
+      // Find users with matching names
+      const { data: matchingUsers } = await supabase
+        .from("users")
+        .select("id")
+        .ilike("name", `%${search}%`);
+      const matchingUserIds = (matchingUsers || []).map(u => u.id);
+
+      // Combine: orders where customer name OR product name matches
+      if (productOrderIds.length > 0 && matchingUserIds.length > 0) {
+        query = query.or(`id.in.(${productOrderIds.join(",")}),user_id.in.(${matchingUserIds.join(",")})`);
+      } else if (productOrderIds.length > 0) {
+        query = query.in("id", productOrderIds);
+      } else if (matchingUserIds.length > 0) {
+        query = query.in("user_id", matchingUserIds);
+      } else {
+        // No matches found — return empty results
+        return { page, limit, totalRecords: 0, totalPages: 0, data: [] };
+      }
+    }
   }
 
   if (status) {
