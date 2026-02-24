@@ -22,6 +22,7 @@ import adminCategoriesRoutes from "./routes/admin.categories.routes.js";
 import razorpayRoutes from "./routes/razorpay.routes.js";
 import adminProfileRoutes from "./routes/admin.profile.routes.js";
 import addressRoutes from "./routes/address.routes.js";
+import adminWalkinRoutes from "./routes/admin.walkin.routes.js";
 
 
 const app = express();
@@ -89,6 +90,7 @@ app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/address", addressRoutes);
 app.use("/api/admin/profile", adminProfileRoutes);
+app.use("/api/admin/walk-in", adminWalkinRoutes);
 
 export default app;
 
