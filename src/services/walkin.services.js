@@ -67,9 +67,6 @@ export const createWalkInOrder = async ({
         );
     }
 
-    // Map walk-in payment methods to DB-allowed values
-    const dbPaymentMethod = payment_method === "cash" ? "cod" : "razorpay";
-
     // Find or create user
     console.log("[walk-in] Finding or creating guest user...");
     const user = await findOrCreateGuestUser({
@@ -117,7 +114,7 @@ export const createWalkInOrder = async ({
         total_amount: totalAmount,
         order_status: "confirmed",
         payment_status: "pending",
-        payment_method: dbPaymentMethod,
+        payment_method: payment_method,
     };
 
     // Add optional fields only if not null (to avoid NOT NULL constraint issues)
@@ -184,7 +181,7 @@ export const createWalkInOrder = async ({
             {
                 order_id: order.id,
                 amount: totalAmount,
-                payment_method: dbPaymentMethod,
+                payment_method: payment_method,
                 payment_status: "pending",
                 transaction_id: null,
             },
@@ -256,9 +253,15 @@ export const updateWalkInOrderStatus = async (orderId, status) => {
         throw new Error("Invalid walk-in order status");
     }
 
+    // Auto-update payment_status based on order status
+    const updatePayload = { order_status: status };
+    if (status === "delivered") {
+        updatePayload.payment_status = "success";
+    }
+
     const { data, error } = await supabaseAdmin
         .from("orders")
-        .update({ order_status: status })
+        .update(updatePayload)
         .eq("id", orderId)
         .eq("order_type", "walk_in")
         .select()
@@ -266,6 +269,14 @@ export const updateWalkInOrderStatus = async (orderId, status) => {
 
     if (error) throw error;
     if (!data) throw new Error("Walk-in order not found");
+
+    // Also update the payments table
+    if (status === "delivered") {
+        await supabaseAdmin
+            .from("payments")
+            .update({ payment_status: "success" })
+            .eq("order_id", orderId);
+    }
 
     return data;
 };
